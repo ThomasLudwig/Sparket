@@ -1,0 +1,100 @@
+plugins {
+    id 'java'
+    id 'scala'
+    id 'application'
+}
+
+application {
+    mainClass = 'fr.inserm.u1078.sparket.Main'
+}
+
+ext {
+    scalaVersion = "2.12"
+    scalaVersionFull = "2.12_FULL"
+    sparkVersion = "3.5.0"
+    adamVersion = "1.0.1"
+}
+
+group 'fr.inserm.u1078'
+version Version.getVersion()
+
+class Version{
+    static String getVersion(){
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("src/main/resources/CHANGELOG.md"));
+            String line;
+            while((line = br.readLine()) != null) {
+                if(line.startsWith("## ")) {
+                    br.close();
+                    return line.split(" ")[1].split("\\(")[0];
+                }
+            }
+            br.close();
+        } catch(Exception e){
+            //ignore
+        }
+        return "unknown";
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
+}
+
+dependencies {
+    implementation "org.scala-lang:scala-library:${project.ext.scalaVersionFull}"
+    implementation "org.scala-lang:scala-reflect:${project.ext.scalaVersionFull}"
+    //implementation "org.scala-lang:scala-compiler:${project.ext.scalaVersionFull}"
+
+    implementation "org.apache.spark:spark-mllib_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-sql_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-graphx_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-launcher_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-catalyst_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-streaming_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.apache.spark:spark-core_${project.ext.scalaVersion}:${project.ext.sparkVersion}"
+    implementation "org.bdgenomics.adam:adam-apis-spark3_${project.ext.scalaVersion}:${project.ext.adamVersion}"
+    implementation "org.bdgenomics.adam:adam-distribution-spark3_${project.ext.scalaVersion}:${project.ext.adamVersion}"
+    implementation "org.bdgenomics.adam:adam-assembly-spark3_${project.ext.scalaVersion}:${project.ext.adamVersion}"
+    implementation "org.bdgenomics.adam:adam-cli-spark3_${project.ext.scalaVersion}:${project.ext.adamVersion}"
+    implementation "org.bdgenomics.adam:adam-core-spark3_${project.ext.scalaVersion}:${project.ext.adamVersion}"
+
+    implementation group: 'commons-io', name: 'commons-io', version: '2.5'
+}
+
+
+task Release(type: Jar) {
+    zip64 = true // <-- Add this
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    includeEmptyDirs = false
+    manifest {
+        attributes 'Main-Class': 'fr.inserm.u1078.sparket.Main'
+    }
+  /*  from (configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+    }*/
+    with jar
+}
+
+task Deploy(type: Copy) {
+    from "build/libs"
+    into "build/libs"
+    include "/${rootProject.name}-${version}.jar"
+    rename { String fileName -> fileName.replace("-${version}", "") }
+}
+
+Deploy.dependsOn(Release)
+
+
+
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+javadoc.options.encoding = 'UTF-8'
+
